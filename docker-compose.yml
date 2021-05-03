@@ -1,0 +1,40 @@
+version: "3.9"
+services:
+  mysqlserver:
+    build: database/
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_ALLOW_EMPTY_PASSWORD=true
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=user
+      - MYSQL_DATABASE=giphy_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_config:/etc/mysql/conf.d
+    container_name: database
+
+  datafetch:
+    build: database_updater/
+    ports:
+      - "3003:3003"
+    environment:
+      - MYSQL_URL=jdbc:mysql://mysqlserver/giphy_db
+    container_name: dbupdater
+
+  rest:
+    build: rest_webservice/
+    ports:
+      - "3001:3001"
+    container_name: restservice
+
+  frontend:
+    build: giphy_frontend/
+    ports:
+      - '8080:8080'
+    container_name: frontend
+
+volumes:
+  mysql_data:
+  mysql_config:
