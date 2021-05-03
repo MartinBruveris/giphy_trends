@@ -7,5 +7,6 @@ RUN mvn clean package
 
 FROM openjdk:11-jre-slim-buster
 WORKDIR /app
+COPY --from=build /app /app/target/
 COPY --from=build /app/target/*.jar app.jar
 ENTRYPOINT ["java","-jar","app.jar"]

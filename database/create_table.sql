@@ -10,11 +10,11 @@ CREATE TABLE IF NOT EXISTS giphy_main_table (
 
 CREATE TABLE IF NOT EXISTS date_tracker (
     id INTEGER AUTO_INCREMENT PRIMARY KEY,
-    latest_date DATETIME NULL,
+    latest_date DATETIME NOT NULL,
     last_updated_on DATETIME NOT NULL
 );\g
 
-INSERT into giphy_db.date_tracker(latest_date, last_updated_on) VALUES(NULL, NOW());\g
+INSERT into giphy_db.date_tracker(latest_date, last_updated_on) VALUES(NOW(), NOW());\g
 
 DELIMITER $$
 

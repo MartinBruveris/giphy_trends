@@ -43,7 +43,12 @@ public class DataRetrieveService {
     @Bean
 	public CommandLineRunner run(RestTemplate restTemplate) throws Exception {
 		return args -> {
-            createTimer();
+            try {
+                createTimer();
+            }
+            catch (Exception e) {
+                log.info("Error, can't create timer");
+            }
 		};
 	}
 
@@ -61,30 +66,39 @@ public class DataRetrieveService {
 
     private Timer createTimer() {
         Timer timer = new Timer();
-        log.info("REFRESH RATE >>> "+refreshRate);
-
-        timer.schedule( new TimerTask() {
-            public void run() {
-                log.info("PULLING NEW DATA");
-                getDataFromAPI();
-                log.info("LATEST RECORD TIMESTAMP: "+getLatestDataInDatabase().toString());
-            }
-        }, initialTimerDelay, (refreshRate * oneMinute));
+        log.info(">> REFRESH RATE EVERY "+refreshRate+" MINUTES");
+        try {
+            timer.schedule( new TimerTask() {
+                public void run() {
+                    log.info("PULLING NEW DATA");
+                    getDataFromAPI();
+                    log.info("LATEST RECORD TIMESTAMP: "+getLatestDataInDatabase().toString());
+                }
+            }, initialTimerDelay, (refreshRate * oneMinute));
+        } catch (Exception e) {
+            log.info("Can't create timer");
+        }
         return timer;
     }
 
     private DateTime getLatestDataInDatabase() {
-        String sql = "SELECT latest_date FROM date_tracker WHERE ID = 1";
-        String latestDateInDatabase = (String) jdbcTemplate.queryForObject(sql, String.class);
+        final String sql = "SELECT latest_date FROM date_tracker WHERE ID = 1";
+        String latestDateInDatabase = null;
+        try {
+            latestDateInDatabase = (String) jdbcTemplate.queryForObject(sql, String.class);
+        } catch (Exception e) {
+            log.info("Can't retrieve latest date in the database", e.getMessage());
+        }
         return dateFormater(latestDateInDatabase);
     }
 
     private void getDataFromAPI() {
-        String url = "https://api.giphy.com/v1/gifs/trending?api_key="+giphyAPIKey+"&limit=10&rating=g";
-        String sql = "INSERT INTO giphy_main_table (giphy_id, giphy_type, embed_url, trending_datetime, title)"+
+        final String url = "https://api.giphy.com/v1/gifs/trending?api_key="+giphyAPIKey+"&limit=10&rating=g";
+        log.info(url);
+        final String sql = "INSERT INTO giphy_main_table (giphy_id, giphy_type, embed_url, trending_datetime, title)"+
             " VALUES (?, ?, ?, ?, ?)";
-        DateTime latestDataTime = getLatestDataInDatabase();
         try {
+            DateTime latestDataTime = getLatestDataInDatabase();
             Boolean newRecordsInserted = false;
             RestTemplate restTemplate = restTemplate();
             GiphyDataWrapper response = restTemplate.getForObject(url, GiphyDataWrapper.class);
@@ -93,17 +107,21 @@ public class DataRetrieveService {
             for(GiphyDTO giphy : giphys){
                 DateTime incommingDate = dateFormater(giphy.getTrending_datetime());
                 if(latestDataTime.isBefore(incommingDate)) {
-                    int result = jdbcTemplate.update(
-                    sql,
-                    giphy.getId(),
-                    giphy.getType(),
-                    giphy.getEmbed_url(),
-                    giphy.getTrending_datetime(),
-                    giphy.getTitle());
+                    try {
+                        int result = jdbcTemplate.update(
+                        sql,
+                        giphy.getId(),
+                        giphy.getType(),
+                        giphy.getEmbed_url(),
+                        giphy.getTrending_datetime(),
+                        giphy.getTitle());
 
-                    if (result > 0) {
-                        log.info(" !! NEW RECORD !! "+giphy.toString());
-                        newRecordsInserted = true;
+                        if (result > 0) {
+                            log.info(" !! NEW RECORD !! "+giphy.toString());
+                            newRecordsInserted = true;
+                        }
+                    } catch(Exception e) {
+                        log.info("Error connecting to the dataSource");
                     }
                 }
             }
@@ -117,7 +135,12 @@ public class DataRetrieveService {
 
     private DateTime dateFormater(String dateToParse){
         DateTimeFormatter datetimeformat = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss");
-        DateTime dateTime = datetimeformat.parseDateTime(dateToParse);
+        DateTime dateTime = null;
+        try {
+            dateTime = datetimeformat.parseDateTime(dateToParse);
+        } catch (Exception e) {
+            log.info("Date parsing error", e.getMessage());
+        }
         return dateTime;
     }
 }

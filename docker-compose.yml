@@ -1,7 +1,10 @@
-version: "3.9"
+version: "3.8"
 services:
   mysqlserver:
     build: database/
+    restart: always
+    networks:
+      - custom-network
     ports:
       - 3306:3306
     environment:
@@ -16,25 +19,40 @@ services:
     container_name: database
 
   datafetch:
+    restart: always
     build: database_updater/
     ports:
       - "3003:3003"
+    depends_on:
+      - mysqlserver
+    networks:
+      - custom-network
     environment:
-      - MYSQL_URL=jdbc:mysql://mysqlserver/giphy_db
+      - MYSQL_URL=jdbc:mysql://mysqlserver:3306/giphy_db
     container_name: dbupdater
 
   rest:
+    restart: always
     build: rest_webservice/
     ports:
       - "3001:3001"
+    depends_on:
+      - mysqlserver
+    networks:
+      - custom-network
     container_name: restservice
 
   frontend:
     build: giphy_frontend/
     ports:
       - '8080:8080'
+    networks:
+      - custom-network
     container_name: frontend
 
 volumes:
   mysql_data:
   mysql_config:
+
+networks: 
+  custom-network:
